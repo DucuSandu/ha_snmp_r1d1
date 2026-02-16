@@ -1,0 +1,6 @@
+{
+  "name": "SNMP R1D1",
+  "render_readme": true,
+  "domains": ["snmp_r1d1"],
+  "homeassistant": "2024.1.0"
+}
