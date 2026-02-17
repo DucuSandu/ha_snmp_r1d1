@@ -208,10 +208,12 @@ class GlobalMacCollectionSwitch(SwitchEntity):
 
     async def async_turn_on(self, **kwargs):
         self._enabled_ports = {str(p) for p in range(1, self._total_ports + 1)}
+        self.async_write_ha_state()
         await self._save_options()
 
     async def async_turn_off(self, **kwargs):
         self._enabled_ports.clear()
+        self.async_write_ha_state()
         await self._save_options()
 
     async def _save_options(self):
@@ -219,6 +221,8 @@ class GlobalMacCollectionSwitch(SwitchEntity):
         # keep options numeric for coordinator
         new_options["mac_collection_ports"] = sorted(list(self._enabled_ports), key=int)
         self.hass.config_entries.async_update_entry(self.config_entry, options=new_options)
+        # Sync back so this instance reflects exactly what was persisted
+        self._enabled_ports = set(str(p) for p in new_options["mac_collection_ports"])
         _LOGGER.info("Updated global mac_collection_ports: %s", new_options["mac_collection_ports"])
 
 
@@ -251,10 +255,12 @@ class PortMacCollectionSwitch(SwitchEntity):
 
     async def async_turn_on(self, **kwargs):
         self._enabled_ports.add(self.raw_port_key)
+        self.async_write_ha_state()
         await self._save_options()
 
     async def async_turn_off(self, **kwargs):
         self._enabled_ports.discard(self.raw_port_key)
+        self.async_write_ha_state()
         await self._save_options()
 
     async def _save_options(self):
@@ -262,4 +268,6 @@ class PortMacCollectionSwitch(SwitchEntity):
         # keep options numeric for coordinator
         new_options["mac_collection_ports"] = sorted(list(self._enabled_ports), key=int)
         self.hass.config_entries.async_update_entry(self.config_entry, options=new_options)
+        # Sync back so this instance reflects exactly what was persisted
+        self._enabled_ports = set(str(p) for p in new_options["mac_collection_ports"])
         _LOGGER.info("Updated mac_collection_ports: %s", new_options["mac_collection_ports"])
