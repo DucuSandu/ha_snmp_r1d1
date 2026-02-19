@@ -1,4 +1,14 @@
-blocking OPen Dir
 
-default on mac collection switch
-switch add logic (if else add entities)
+
+
+__init__.py — Platform setup before data is available
+The platforms (sensor, switch, etc.) were being set up before async_config_entry_first_refresh() ran. This means entities were registering listeners on a coordinator with no data yet, causing potential None errors on the very first state read. Fixed by swapping the order: refresh first, then forward to platforms.
+
+coordinator.py — Write ops crash when client is None
+async_set_switch_state() and async_set_text_value() both call self.client.async_set(...), but self.client is None until the first poll runs. If a user toggled a switch immediately on startup (before the first poll), it would crash with AttributeError: 'NoneType' object has no attribute 'async_set'. Added an early-return guard for self.client is None in both methods.
+Also removed a dead commented-out self.data.update(new_data) line that was sitting outside the lock — it would have caused a double-update and data corruption if uncommented accidentally.
+
+config_flow.py — SNMP v3 credentials silently broken in 3 flow steps
+handle_test, handle_discover, and handle_validate all constructed SnmpCredentials with only version, read_community, and write_community — missing username, auth_protocol, auth_key, privacy_protocol, and privacy_key. Any user configuring SNMP v3 would silently fail connection tests and discovery with a cryptic error instead of a clear auth failure. Fixed all 3 to pass the full credential set.
+config_flow.py — SnmpOptionsFlow missing _configured_oids
+SnmpOptionsFlow.__init__ initialized _validated_oids and _device_info but not _configured_oids. The reconfigure flow calls handle_parse_config which writes to flow._configured_oids, and handle_validate reads from it — both would crash with AttributeError on reconfigure. Added self._configured_oids = {} to the init.
