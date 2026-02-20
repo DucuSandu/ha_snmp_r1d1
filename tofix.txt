@@ -12,3 +12,7 @@ config_flow.py — SNMP v3 credentials silently broken in 3 flow steps
 handle_test, handle_discover, and handle_validate all constructed SnmpCredentials with only version, read_community, and write_community — missing username, auth_protocol, auth_key, privacy_protocol, and privacy_key. Any user configuring SNMP v3 would silently fail connection tests and discovery with a cryptic error instead of a clear auth failure. Fixed all 3 to pass the full credential set.
 config_flow.py — SnmpOptionsFlow missing _configured_oids
 SnmpOptionsFlow.__init__ initialized _validated_oids and _device_info but not _configured_oids. The reconfigure flow calls handle_parse_config which writes to flow._configured_oids, and handle_validate reads from it — both would crash with AttributeError on reconfigure. Added self._configured_oids = {} to the init.
+
+
+To Do:
+Re

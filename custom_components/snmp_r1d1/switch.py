@@ -32,9 +32,8 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     prefix = config_entry.data[CONF_ENTITY_PREFIX]
     entities = []
 
-
     # ----------------------------
-    # MAC table switches (independent of CONF_ENABLE_CONTROLS, if OIDs exist)
+    # MAC table switches (always created, independent of CONF_ENABLE_CONTROLS)
     # ----------------------------
     has_mac_table = any(
         entry.get("type") == "mac_table"
@@ -47,50 +46,38 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     if has_mac_table and has_mac_port:
         port_count = int(device_info_data.get("port_count", 1))
-        all_ports = [str(p) for p in range(1, port_count + 1)]
+        excluded_ports = config_entry.options.get("mac_excluded_ports", [])
         entities.append(mac_table.GlobalMacCollectionSwitch(
-            coordinator, prefix, device_info,
-            config_entry.options.get("mac_excluded_ports", []),
-            config_entry
+            coordinator, device_info, prefix, excluded_ports, config_entry
         ))
         for port in range(1, port_count + 1):
-            entities.append(
-                mac_table.PortMacCollectionSwitch(
-                    coordinator, prefix, port, device_info,
-                    config_entry.options.get("mac_excluded_ports", []),
-                    config_entry
-                )
-            )
-        _LOGGER.info("MAC table switches created")
+            entities.append(mac_table.PortMacCollectionSwitch(
+                coordinator, device_info, prefix, port, excluded_ports, config_entry
+            ))
+        _LOGGER.info("MAC table switches created (%d port switches)", port_count)
     else:
         _LOGGER.info("No MAC table OIDs found, skipping MAC switches")
 
-    # Skip setup SNMP Switches if controls are not enabled for this device (CONF_ENABLE_CONTROLS)
-    if not config_entry.data.get(CONF_ENABLE_CONTROLS, False):
-        async_add_entities(entities)
-        _LOGGER.info("Controls are disabled, skipping switch setup")
-        return
-
     # ----------------------------
-    # Device-level SNMP switches
+    # SNMP control switches (only if CONF_ENABLE_CONTROLS is set)
     # ----------------------------
-    for key, entry in coordinator.validated_oids.get("device", {}).items():
-        if entry.get("type") == "switch":
-            entities.append(SnmpDeviceSwitch(coordinator, key, device_info, prefix, entry))
-            _LOGGER.info(f"Added device switch: {key}")
-
-    # ----------------------------
-    # Port-level SNMP switches
-    # ----------------------------
-    for port_key, port_attrs in coordinator.validated_oids.get("ports", {}).items():
-        for key, entry in port_attrs.items():
+    if config_entry.data.get(CONF_ENABLE_CONTROLS, False):
+        for key, entry in coordinator.validated_oids.get("device", {}).items():
             if entry.get("type") == "switch":
-                entities.append(SnmpPortSwitch(coordinator, port_key, key, device_info, prefix, entry))
-                _LOGGER.info(f"Added port switch: {port_key}_{key}")
+                entities.append(SnmpDeviceSwitch(coordinator, device_info, key, entry, prefix))
+                _LOGGER.info("Added device switch: %s", key)
 
-    # Register all created switch entities
+        for port_key, port_attrs in coordinator.validated_oids.get("ports", {}).items():
+            for key, entry in port_attrs.items():
+                if entry.get("type") == "switch":
+                    entities.append(SnmpPortSwitch(coordinator, device_info, key, entry, prefix, port_key))
+                    _LOGGER.info("Added port switch: %s_%s", port_key, key)
+    else:
+        _LOGGER.info("Controls disabled, skipping SNMP control switches")
+
+    # Register all entities — called exactly once
     async_add_entities(entities)
-    _LOGGER.info("Switch setup completed")
+    _LOGGER.info("Switch setup completed with %d entities", len(entities))
 
 
 # ================================================================
@@ -99,14 +86,14 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class SnmpDeviceSwitch(SwitchEntity):
     """Representation of a device-level switch entity."""
 
-    def __init__(self, coordinator, switch_type, device_info, prefix, entry: dict):
+    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, switch_type: str, entry: dict, prefix: str):
         super().__init__()
         self.coordinator = coordinator
         self.switch_type = switch_type
         self._attr_device_info = device_info
         self._attr_should_poll = False
         # Unique ID for HA registry
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, switch_type, suffix="switch")
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "switch", switch_type, prefix)
         # Human-readable name
         self._attr_name = make_entity_name(switch_type)
         self._entry = entry
@@ -151,7 +138,7 @@ class SnmpDeviceSwitch(SwitchEntity):
 class SnmpPortSwitch(SwitchEntity):
     """Representation of a port-level switch entity."""
 
-    def __init__(self, coordinator, padded_port_key, switch_type, device_info, prefix, entry: dict):
+    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, switch_type: str, entry: dict, prefix: str, padded_port_key: str):
         super().__init__()
         self.coordinator = coordinator
         self.padded_port_key = padded_port_key  # e.g., "p01"
@@ -159,7 +146,7 @@ class SnmpPortSwitch(SwitchEntity):
         self._attr_device_info = device_info
         self._attr_should_poll = False
         # Unique ID includes port
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, switch_type, suffix="switch", port=padded_port_key)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "switch", switch_type, prefix, padded_port_key)
         # Human-readable name: Port-05 Admin State
         self._attr_name = make_port_entity_name(padded_port_key, switch_type)
         self._entry = entry

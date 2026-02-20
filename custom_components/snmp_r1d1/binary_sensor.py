@@ -35,7 +35,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     device_oids = coordinator.validated_oids.get("device", {})
     for key, entry in device_oids.items():
         if entry.get("type") == "binary_sensor":
-            entities.append(SnmpBinarySensor(coordinator, key, device_info, prefix, entry))
+            entities.append(SnmpBinarySensor(coordinator, device_info, key, entry, prefix))
             _LOGGER.info(f"Added device binary sensor: {key}")
         else:
             _LOGGER.debug(f"Skipping device OID {key}: type={entry.get('type')}")
@@ -52,14 +52,14 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         _LOGGER.debug(f"Processing port {port_key}: attributes={port_attrs}")
         for key, entry in port_attrs.items():
             if entry.get("type") == "binary_sensor":
-                entities.append(SnmpPortBinarySensor(coordinator, port_key, key, device_info, prefix, entry))
+                entities.append(SnmpPortBinarySensor(coordinator, device_info, key, entry, prefix, port_key))
                 _LOGGER.info(f"Added port binary sensor: {port_key}_{key}")
             else:
                 _LOGGER.debug(f"Skipping port OID {port_key}_{key}: type={entry.get('type')}")
 
     if not entities:
         _LOGGER.error("No binary sensors added. Check validated_oids, port_count, and CONF_ENABLE_CONTROLS: %s",
-                      config_entry.data.get(CONF_ENABLE_CONTROLS))
+                    config_entry.data.get(CONF_ENABLE_CONTROLS))
     else:
         _LOGGER.info("Binary sensor setup completed with %d entities", len(entities))
     async_add_entities(entities)
@@ -67,13 +67,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class SnmpBinarySensor(BinarySensorEntity):
     """Representation of a device-level binary sensor."""
 
-    def __init__(self, coordinator: SnmpDataUpdateCoordinator, sensor_type: str, device_info: DeviceInfo, prefix: str, entry: dict):
+    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, sensor_type: str, entry: dict, prefix: str):
         super().__init__()
         self.coordinator = coordinator
         self.sensor_type = sensor_type
         self._attr_device_info = device_info
         self._attr_should_poll = False
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, sensor_type, suffix="binary")
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "binary_sensor", sensor_type, prefix)
         self._attr_name = make_entity_name(sensor_type)
         self._attr_device_class = entry.get("device_class")
         self._entry = entry  # Store entry for vmap
@@ -99,14 +99,14 @@ class SnmpBinarySensor(BinarySensorEntity):
 class SnmpPortBinarySensor(BinarySensorEntity):
     """Representation of a port-level binary sensor."""
 
-    def __init__(self, coordinator: SnmpDataUpdateCoordinator, padded_port_key: str, sensor_type: str, device_info: DeviceInfo, prefix: str, entry: dict):
+    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, sensor_type: str, entry: dict, prefix: str, padded_port_key: str):
         super().__init__()
         self.coordinator = coordinator
         self.padded_port_key = padded_port_key  # e.g., "p01"
         self.sensor_type = sensor_type
         self._attr_device_info = device_info
         self._attr_should_poll = False
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, sensor_type, suffix="binary", port=padded_port_key)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "binary_sensor", sensor_type, prefix, padded_port_key)
         self._attr_name = make_port_entity_name(padded_port_key, sensor_type)
         self._attr_device_class = entry.get("device_class")
         self._entry = entry  # Store entry for vmap

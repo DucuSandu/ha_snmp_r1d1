@@ -29,7 +29,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     # Device-level text entities
     for key, entry in coordinator.validated_oids.get("device", {}).items():
         if entry.get("type") == "text":
-            entities.append(SnmpDeviceText(coordinator, key, device_info, prefix, entry))
+            entities.append(SnmpDeviceText(coordinator, device_info, key, entry, prefix))
             _LOGGER.info(f"Added device text entity: {key}")
 
     # Port-level text entities with zero-padded keys
@@ -43,7 +43,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         port_attrs = ports_oids[port_key]
         for key, entry in port_attrs.items():
             if entry.get("type") == "text":
-                entities.append(SnmpPortText(coordinator, port_key, key, device_info, prefix, entry))
+                entities.append(SnmpPortText(coordinator, device_info, key, entry, prefix, port_key))
                 _LOGGER.info(f"Added port text entity: {port_key}_{key}")
 
     if not entities:
@@ -55,7 +55,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class SnmpDeviceText(TextEntity):
     """Representation of a device-level text entity (e.g., sysName)."""
 
-    def __init__(self, coordinator: SnmpDataUpdateCoordinator, text_type: str, device_info: DeviceInfo, prefix: str, entry: dict):
+    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, text_type: str, entry: dict, prefix: str):
         """Initialize the device-level text entity."""
         super().__init__()
         device_name = coordinator.config_entry.data[CONF_DEVICE_NAME]
@@ -63,7 +63,7 @@ class SnmpDeviceText(TextEntity):
         self.text_type = text_type
         self._attr_device_info = device_info
         self._attr_should_poll = False
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, text_type, suffix="text")
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "text", text_type, prefix)
         self._attr_name = make_entity_name(text_type)
         self._attr_device_class = entry.get("device_class")
         self._entry = entry
@@ -101,7 +101,7 @@ class SnmpDeviceText(TextEntity):
 class SnmpPortText(TextEntity):
     """Representation of a port-level text entity (e.g., ifAlias)."""
 
-    def __init__(self, coordinator: SnmpDataUpdateCoordinator, padded_port_key: str, text_type: str, device_info: DeviceInfo, prefix: str, entry: dict):
+    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, text_type: str, entry: dict, prefix: str, padded_port_key: str):
         """Initialize the port-level text entity."""
         super().__init__()
         device_name = coordinator.config_entry.data[CONF_DEVICE_NAME]
@@ -110,7 +110,7 @@ class SnmpPortText(TextEntity):
         self.text_type = text_type
         self._attr_device_info = device_info
         self._attr_should_poll = False
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, text_type, suffix="text", port=padded_port_key)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "text", text_type, prefix, padded_port_key)
         self._attr_name = make_port_entity_name(padded_port_key, text_type)
         self._attr_device_class = entry.get("device_class")
         self._entry = entry

@@ -30,8 +30,8 @@ def load_devices() -> Dict[str, Dict[str, Any]]:
 
     Returns:
         Dict[str, Dict[str, Any]]: A mapping of device filename → device definition,
-                                   where each definition is itself a dict containing
-                                   "config", "attributes", "device", and optionally "ports".
+        where each definition is itself a dict containing
+        "config", "attributes", "device", and optionally "ports".
     """
     devices: Dict[str, Dict[str, Any]] = {}
 
