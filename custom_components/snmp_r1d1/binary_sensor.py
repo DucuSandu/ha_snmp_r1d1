@@ -6,12 +6,10 @@ from homeassistant.helpers.device_registry import DeviceEntryType
 from homeassistant.helpers.entity import DeviceInfo
 from .const import *
 from .coordinator import SnmpDataUpdateCoordinator
-from .helpers import apply_bool_vmap, make_entity_name, make_port_entity_name, make_entity_id
+from .helpers import apply_bool_vmap, make_entity_name, make_entity_id
 
 
 _LOGGER = logging.getLogger(__name__)
-
-
 
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
@@ -72,9 +70,10 @@ class SnmpBinarySensor(BinarySensorEntity):
         self.coordinator = coordinator
         self.sensor_type = sensor_type
         self._attr_device_info = device_info
+        self._attr_has_entity_name = True
         self._attr_should_poll = False
         self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "binary_sensor", sensor_type, prefix)
-        self._attr_name = make_entity_name(sensor_type)
+        self._attr_name = make_entity_name(sensor_type, prefix=prefix)
         self._attr_device_class = entry.get("device_class")
         self._entry = entry  # Store entry for vmap
 
@@ -105,9 +104,10 @@ class SnmpPortBinarySensor(BinarySensorEntity):
         self.padded_port_key = padded_port_key  # e.g., "p01"
         self.sensor_type = sensor_type
         self._attr_device_info = device_info
+        self._attr_has_entity_name = True
         self._attr_should_poll = False
         self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "binary_sensor", sensor_type, prefix, padded_port_key)
-        self._attr_name = make_port_entity_name(padded_port_key, sensor_type)
+        self._attr_name = make_entity_name(sensor_type, prefix=prefix, port_key=padded_port_key)
         self._attr_device_class = entry.get("device_class")
         self._entry = entry  # Store entry for vmap
 

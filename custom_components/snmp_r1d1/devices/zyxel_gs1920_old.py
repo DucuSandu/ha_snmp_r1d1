@@ -67,6 +67,7 @@ device = {
     "memory_usage": {"oid": ".1.3.6.1.4.1.890.1.15.3.2.7.0", "type": "sensor", "unit": "%"},  # memory usage
     "poe_usage": {"oid": ".1.3.6.1.2.1.105.1.3.1.1.4.1", "type": "sensor", "unit": "W"},      # PoE usage in watts
     "temperature": {"oid": ".1.3.6.1.4.1.890.1.15.3.26.1.2.1.3.1", "type": "sensor", "device_class": "temperature", "unit": "°C"},  # system temp
+
     "igmp_snoop": {"oid": ".1.3.6.1.4.1.890.1.15.3.110.1.1.0", "type": "switch", "vmap": {"on": "1", "off": "2"}},  # IGMP snooping
     "mac_table": {"oid": ".1.3.6.1.2.1.17.4.3.1.1", "type": "mac_table"},
     "mac_port": {"oid": ".1.3.6.1.2.1.17.4.3.1.2", "type": "mac_port"},
@@ -74,14 +75,14 @@ device = {
 
 ports = {
     "port_name": {"oid": ".1.3.6.1.2.1.31.1.1.1.18", "type": "text"},                        # interface alias
-    #"port_status": {"oid": ".1.3.6.1.2.1.2.2.1.8", "type": "binary_sensor"},                 # link up/down
+    "port_status": {"oid": ".1.3.6.1.2.1.2.2.1.8", "type": "binary_sensor"},                 # link up/down
     "port_admin": {"oid": ".1.3.6.1.2.1.2.2.1.7", "type": "switch", "vmap": {"on": "1", "off": "2"}},  # admin status
     "port_errors_in": {"oid": "1.3.6.1.2.1.2.2.1.14", "type": "sensor", "calc": "diff"},     # input errors (delta)
     "port_errors_out": {"oid": "1.3.6.1.2.1.2.2.1.20", "type": "sensor", "calc": "diff"},    # output errors (delta)
-    "port_connected": {"oid": ".1.3.6.1.2.1.2.2.1.5", "type": "sensor", "device_class": "data_rate", "math": "x/1000000", "unit": "Mbit/s"},  # speed bps→Mbps
+    "port_speed": {"oid": ".1.3.6.1.2.1.2.2.1.5", "type": "sensor", "device_class": "data_rate", "math": "x/1000000", "unit": "Mbit/s"},  # speed bps→Mbps
     "port_traffic_in": {"oid": "1.3.6.1.2.1.2.2.1.10", "type": "sensor", "device_class": "data_rate", "calc": "diff", "math": "(x*8)/1000000", "unit": "Mbit/s"},  # ingress traffic
     "port_traffic_out": {"oid": "1.3.6.1.2.1.2.2.1.16", "type": "sensor", "device_class": "data_rate", "calc": "diff", "math": "-(x*8)/1000000","unit": "Mbit/s"},  # egress traffic
     "poe_enabled": {"oid": ".1.3.6.1.2.1.105.1.1.1.3.1", "type": "switch", "vmap": {"on": "1", "off": "2"}},  # PoE enable/disable
     "poe_power": {"oid": ".1.3.6.1.4.1.890.1.15.3.59.2.1.1.1", "type": "sensor", "device_class": "power", "unit": "mW"},  # PoE power per port
-    #"poe_status": {"oid": ".1.3.6.1.2.1.105.1.1.1.6.1", "type": "sensor", "vmap": {"0": "off", "1": "disabled", "2": "searching", "3": "delivering", ">4": "fault"}},  # PoE status
+    "poe_status": {"oid": ".1.3.6.1.2.1.105.1.1.1.6.1", "type": "sensor", "vmap": {"0": "off", "1": "disabled", "2": "searching", "3": "delivering", ">4": "fault"}},  # PoE status
 }

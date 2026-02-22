@@ -4,10 +4,11 @@ import logging
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.helpers.entity import DeviceInfo
 from .const import *
+from .helpers import *
 from . import mac_table
 from .coordinator import SnmpDataUpdateCoordinator
 
-from .helpers import apply_bool_vmap, make_entity_name, make_port_entity_name, make_entity_id
+
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -91,11 +92,12 @@ class SnmpDeviceSwitch(SwitchEntity):
         self.coordinator = coordinator
         self.switch_type = switch_type
         self._attr_device_info = device_info
+        self._attr_has_entity_name = True
         self._attr_should_poll = False
         # Unique ID for HA registry
         self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "switch", switch_type, prefix)
         # Human-readable name
-        self._attr_name = make_entity_name(switch_type)
+        self._attr_name = make_entity_name(switch_type, prefix=prefix)
         self._entry = entry
 
     async def async_added_to_hass(self):
@@ -129,9 +131,10 @@ class SnmpDeviceSwitch(SwitchEntity):
         """Optional attributes: firmware version."""
         if not self.coordinator.data or "device" not in self.coordinator.data:
             return {}
-        return {"firmware": self.coordinator.data["device"].get("firmware", "Unknown")}
-
-
+        return {
+            "firmware": self.coordinator.data["device"].get("firmware", "Unknown"),
+        }
+  
 # ================================================================
 # Entity: Port-level switch
 # ================================================================
@@ -144,11 +147,12 @@ class SnmpPortSwitch(SwitchEntity):
         self.padded_port_key = padded_port_key  # e.g., "p01"
         self.switch_type = switch_type
         self._attr_device_info = device_info
+        self._attr_has_entity_name = True
         self._attr_should_poll = False
         # Unique ID includes port
         self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "switch", switch_type, prefix, padded_port_key)
         # Human-readable name: Port-05 Admin State
-        self._attr_name = make_port_entity_name(padded_port_key, switch_type)
+        self._attr_name = make_entity_name(switch_type, prefix=prefix, port_key=padded_port_key)
         self._entry = entry
 
     async def async_added_to_hass(self):
@@ -184,4 +188,6 @@ class SnmpPortSwitch(SwitchEntity):
         if not self.coordinator.data or "ports" not in self.coordinator.data:
             return {}
         port_data = self.coordinator.data["ports"].get(self.padded_port_key, {})
-        return {"port_name": port_data.get("port_name", "Unknown")}
+        return {            
+            "port_name": port_data.get("port_name", "Unknown")
+        }

@@ -14,7 +14,7 @@ from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.components.switch import SwitchEntity
-from .helpers import make_entity_name, make_port_entity_name, make_entity_id
+from .helpers import *
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -49,9 +49,10 @@ class DeviceMacTableSensor(SensorEntity):
     def __init__(self, coordinator, device_info: dict, prefix: str):
         self.coordinator = coordinator
         self._attr_device_info = device_info
+        self._attr_has_entity_name = True
         self._attr_should_poll = False
         self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", "mac_table", prefix)
-        self._attr_name = make_entity_name("mac_table")
+        self._attr_name = make_entity_name("mac_table", prefix=prefix)
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_added_to_hass(self):
@@ -88,17 +89,16 @@ class DeviceMacTableSensor(SensorEntity):
             "last_updated": table.get("last_updated"),
         }
 
-
-
 class DeviceMacCountSensor(SensorEntity):
     """Total MAC count across all ports."""
 
     def __init__(self, coordinator, device_info: dict, prefix: str):
         self.coordinator = coordinator
         self._attr_device_info = device_info
+        self._attr_has_entity_name = True
         self._attr_should_poll = False
         self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", "mac_count", prefix)
-        self._attr_name = make_entity_name("mac_count")
+        self._attr_name = make_entity_name("mac_count", prefix=prefix)
 
     async def async_added_to_hass(self):
         self.async_on_remove(
@@ -113,16 +113,16 @@ class DeviceMacCountSensor(SensorEntity):
         ports = table.get("ports", {})
         return sum(len(macs) for macs in ports.values())
 
-
 class DeviceMacTableLastUpdateSensor(SensorEntity):
     """Sensor to expose the last updated timestamp of the MAC table."""
 
     def __init__(self, coordinator, device_info: dict, prefix: str):
         self.coordinator = coordinator
         self._attr_device_info = device_info
+        self._attr_has_entity_name = True
         self._attr_should_poll = False
         self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", "mac_table_last_update", prefix)
-        self._attr_name = make_entity_name("mac_table_last_update")
+        self._attr_name = make_entity_name("mac_table_last_update", prefix=prefix)
 
     async def async_added_to_hass(self):
         self.async_on_remove(
@@ -152,9 +152,10 @@ class PortMacTableSensor(SensorEntity):
         self.raw_port_key = str(port)                 # numeric lookup
         self.padded_port_key = f"p{int(port):02d}"    # for names/unique_id
         self._attr_device_info = device_info
+        self._attr_has_entity_name = True
         self._attr_should_poll = False
         self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", "mac_table", prefix, self.padded_port_key)
-        self._attr_name = make_port_entity_name(self.padded_port_key, "mac_table")
+        self._attr_name = make_entity_name("mac_table", prefix=prefix, port_key=self.padded_port_key)
 
     async def async_added_to_hass(self):
         self.async_on_remove(
@@ -196,9 +197,10 @@ class GlobalMacCollectionSwitch(SwitchEntity):
         self.coordinator = coordinator
         self.config_entry = config_entry
         self._attr_device_info = device_info
+        self._attr_has_entity_name = True
         self._attr_should_poll = False
         self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "switch", "mac_collection", prefix)
-        self._attr_name = make_entity_name("disable_mac_collection")
+        self._attr_name = make_entity_name("disable_mac_collection", prefix=prefix)
         self._excluded_ports = set(excluded_ports)
         self._total_ports = int(device_info.get("port_count", 1))
 
@@ -247,9 +249,10 @@ class PortMacCollectionSwitch(SwitchEntity):
         self.padded_port_key = f"p{int(port):02d}"    # for names/unique_id
         self.config_entry = config_entry
         self._attr_device_info = device_info
+        self._attr_has_entity_name = True
         self._attr_should_poll = False
         self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "switch", "mac_collection", prefix, self.padded_port_key)
-        self._attr_name = make_port_entity_name(self.padded_port_key, "disable_mac_collection")
+        self._attr_name = make_entity_name("disable_mac_collection", prefix=prefix, port_key=self.padded_port_key)
         self._excluded_ports = set(excluded_ports)
 
     async def async_added_to_hass(self):

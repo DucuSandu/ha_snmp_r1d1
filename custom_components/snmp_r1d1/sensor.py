@@ -8,9 +8,9 @@ from homeassistant.util import dt as dt_util
 import re
 import math
 from .const import *
+from .helpers import *
 from . import mac_table
 from .coordinator import SnmpDataUpdateCoordinator
-from .helpers import apply_vmap, make_entity_name, make_port_entity_name, make_entity_id
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -208,13 +208,15 @@ class SnmpSensor(SensorEntity):
         self.coordinator = coordinator
         self.sensor_type = sensor_type
         self._attr_device_info = device_info
+        self._attr_has_entity_name = True
         self._attr_should_poll = False
+
         
         # Unique ID = entry_id + sensor_type
         self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", sensor_type, prefix)
 
         # Human-readable name
-        self._attr_name = make_entity_name(sensor_type)
+        self._attr_name = make_entity_name(sensor_type, prefix=prefix)
         self._attr_device_class = entry.get("device_class")
         self._attr_native_unit_of_measurement = entry.get("native_unit_of_measurement")
         self._entry = entry
@@ -248,12 +250,13 @@ class SnmpPortSensor(SensorEntity):
         self.padded_port_key = padded_port_key
         self.sensor_type = sensor_type
         self._attr_device_info = device_info
+        self._attr_has_entity_name = True
         self._attr_should_poll = False
         # Unique ID includes port key
         self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", sensor_type, prefix, padded_port_key)
 
         # Human-readable name: "Port-05 In Octets"
-        self._attr_name = make_port_entity_name(padded_port_key, sensor_type)
+        self._attr_name = make_entity_name(sensor_type, prefix=prefix, port_key=padded_port_key)
 
         self._attr_device_class = entry.get("device_class")
         self._attr_native_unit_of_measurement = entry.get("native_unit_of_measurement")
@@ -290,9 +293,10 @@ class SnmpTextSensor(SensorEntity):
         self.coordinator = coordinator
         self.sensor_type = sensor_type
         self._attr_device_info = device_info
+        self._attr_has_entity_name = True
         self._attr_should_poll = False
         self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "text_sensor", sensor_type, prefix)
-        self._attr_name = make_entity_name(sensor_type)
+        self._attr_name = make_entity_name(sensor_type, prefix=prefix)
         self._entry = entry
 
     async def async_added_to_hass(self):
@@ -317,9 +321,10 @@ class SnmpPortTextSensor(SensorEntity):
         self.padded_port_key = padded_port_key
         self.sensor_type = sensor_type
         self._attr_device_info = device_info
+        self._attr_has_entity_name = True
         self._attr_should_poll = False
         self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "text_sensor", sensor_type, prefix, padded_port_key)
-        self._attr_name = make_port_entity_name(padded_port_key, sensor_type)
+        self._attr_name = make_entity_name(sensor_type, prefix=prefix, port_key=padded_port_key)
         self._entry = entry
 
     async def async_added_to_hass(self):

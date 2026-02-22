@@ -1014,6 +1014,10 @@ class SnmpFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 ipaddress.ip_address(user_input[CONF_DEVICE_IP])
+                # Auto-generate prefix from device name if left empty
+                if not user_input[CONF_ENTITY_PREFIX]:
+                    raw = user_input[CONF_DEVICE_NAME].lower().strip()
+                    user_input[CONF_ENTITY_PREFIX] = re.sub(r'[^a-z0-9]+', '_', raw).strip('_')
                 if not re.match(r"^[a-z0-9_]+$", user_input[CONF_ENTITY_PREFIX]):
                     raise ValueError("Invalid entity prefix")
                 self._data.update(user_input)
@@ -1028,9 +1032,10 @@ class SnmpFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=vol.Schema({
                 vol.Required(CONF_DEVICE_IP, default=self._data.get(CONF_DEVICE_IP, "")): str,
-                vol.Required(CONF_ENTITY_PREFIX, default=self._data.get(CONF_ENTITY_PREFIX, "")): str,
-                vol.Required(CONF_DEVICE_TYPE, default=self._data.get(CONF_DEVICE_TYPE, "zyxel")): vol.In(list(DEVICE_TYPE_OIDS.keys())),
                 vol.Required(CONF_DEVICE_NAME, default=self._data.get(CONF_DEVICE_NAME, "")): str,
+                vol.Required(CONF_DEVICE_TYPE, default=self._data.get(CONF_DEVICE_TYPE, "zyxel")): vol.In(list(DEVICE_TYPE_OIDS.keys())),
+                vol.Optional(CONF_ENTITY_PREFIX, default=self._data.get(CONF_ENTITY_PREFIX, "")): str,
+                                
             }),
             errors=errors,
         )

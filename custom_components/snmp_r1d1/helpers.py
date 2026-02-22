@@ -134,41 +134,27 @@ def to_snmp_bool(state: bool, vmap: dict, sensor_id: str, logger=_LOGGER):
 # Entity naming helpers
 # ================================================================
 
-def make_entity_name(sensor_type: str,) -> str:
-    """Convert a raw sensor key (e.g. 'poe_status') into a human-friendly name.
-    Args:
-        sensor_type (str): The technical key used in validated_oids.
-                           Example: "poe_status"
-
-    Returns:
-        str: Human-friendly name.
-             Example: "Poe Status"
+def make_entity_name(sensor_type: str, prefix: str = None, port_key: str = None) -> str:
+    """Generate a friendly name without prefix for HA friendly_name attribute.
+    
+    Note: prefix argument reserved for future use, not applied to output.
+    
+    Examples:
+        make_entity_name("poe_status")
+            → "Device Poe Status"
+        make_entity_name("poe_status", port_key="p05")
+            → "Port-05 Poe Status"
     """
-    if not sensor_type:
-        return "Unknown"
-    #return sensor_type.replace("_", " ").title()
-    return f"Device {sensor_type.replace('_', ' ').title()}"
+    base = sensor_type.replace("_", " ").title()
 
-def make_port_entity_name(port_key: str, sensor_type: str) -> str:
-    """Generate a human-friendly entity name for port-based sensors.
-
-    Args:
-        port_key (str): Port identifier like "p02" or "p10".
-        sensor_type (str): The technical key used in validated_oids.
-                           Example: "poe_status"
-
-    Returns:
-        str: Human-friendly port-based entity name.
-             Example: "Port-02 Poe Status"
-    """
-    try:
+    if port_key:
         port_num = port_key[1:] if port_key.startswith("p") else port_key
-    except Exception:
-        port_num = port_key or "?"
-        
-    return f"Port-{port_num} {sensor_type.replace('_', ' ').title()}"
+        location_part = f"Port-{port_num}"
+    else:
+        location_part = "Device"
 
-
+    return f"{location_part} {base}"
+    
 # ================================================================
 # Helper: Consistent unique_id generator for entities
 # ================================================================
