@@ -25,7 +25,6 @@ PRIVACY_PROTOCOLS = ["AES", "DES", "None"]
 # Configuration Keys
 CONF_DEVICE_IP = "device_ip"
 CONF_DEVICE_NAME = "device_name"
-CONF_ENTITY_PREFIX = "entity_prefix"
 CONF_DEVICE_TYPE = "device_type"
 CONF_SNMP_VERSION = "snmp_version"
 CONF_ENABLE_CONTROLS = "enable_controls"

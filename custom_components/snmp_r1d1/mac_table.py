@@ -46,13 +46,13 @@ def _normalize_ports(ports: dict) -> dict:
 class DeviceMacTableSensor(SensorEntity):
     """Global MAC table sensor (MAC → port mapping with diagnostic attributes)."""
 
-    def __init__(self, coordinator, device_info: dict, prefix: str):
+    def __init__(self, coordinator, device_info: dict):
         self.coordinator = coordinator
         self._attr_device_info = device_info
         self._attr_has_entity_name = True
         self._attr_should_poll = False
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", "mac_table", prefix)
-        self._attr_name = make_entity_name("mac_table", prefix=prefix)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", "mac_table")
+        self._attr_name = make_entity_name("mac_table")
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_added_to_hass(self):
@@ -92,13 +92,13 @@ class DeviceMacTableSensor(SensorEntity):
 class DeviceMacCountSensor(SensorEntity):
     """Total MAC count across all ports."""
 
-    def __init__(self, coordinator, device_info: dict, prefix: str):
+    def __init__(self, coordinator, device_info: dict):
         self.coordinator = coordinator
         self._attr_device_info = device_info
         self._attr_has_entity_name = True
         self._attr_should_poll = False
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", "mac_count", prefix)
-        self._attr_name = make_entity_name("mac_count", prefix=prefix)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", "mac_count")
+        self._attr_name = make_entity_name("mac_count")
 
     async def async_added_to_hass(self):
         self.async_on_remove(
@@ -116,13 +116,13 @@ class DeviceMacCountSensor(SensorEntity):
 class DeviceMacTableLastUpdateSensor(SensorEntity):
     """Sensor to expose the last updated timestamp of the MAC table."""
 
-    def __init__(self, coordinator, device_info: dict, prefix: str):
+    def __init__(self, coordinator, device_info: dict):
         self.coordinator = coordinator
         self._attr_device_info = device_info
         self._attr_has_entity_name = True
         self._attr_should_poll = False
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", "mac_table_last_update", prefix)
-        self._attr_name = make_entity_name("mac_table_last_update", prefix=prefix)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", "mac_table_last_update")
+        self._attr_name = make_entity_name("mac_table_last_update")
 
     async def async_added_to_hass(self):
         self.async_on_remove(
@@ -147,15 +147,15 @@ class PortMacTableSensor(SensorEntity):
     extra_state_attributes = sorted list of MAC addresses.
     """
 
-    def __init__(self, coordinator, device_info: dict, prefix: str, port):
+    def __init__(self, coordinator, device_info: dict, port):
         self.coordinator = coordinator
         self.raw_port_key = str(port)                 # numeric lookup
         self.padded_port_key = f"p{int(port):02d}"    # for names/unique_id
         self._attr_device_info = device_info
         self._attr_has_entity_name = True
         self._attr_should_poll = False
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", "mac_table", prefix, self.padded_port_key)
-        self._attr_name = make_entity_name("mac_table", prefix=prefix, port_key=self.padded_port_key)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", "mac_table", self.padded_port_key)
+        self._attr_name = make_entity_name("mac_table", port_key=self.padded_port_key)
 
     async def async_added_to_hass(self):
         self.async_on_remove(
@@ -193,14 +193,14 @@ class GlobalMacCollectionSwitch(SwitchEntity):
     OFF = MAC collection enabled for all ports (no ports excluded)
     """
 
-    def __init__(self, coordinator, device_info: dict, prefix: str, excluded_ports, config_entry):
+    def __init__(self, coordinator, device_info: dict, excluded_ports, config_entry):
         self.coordinator = coordinator
         self.config_entry = config_entry
         self._attr_device_info = device_info
         self._attr_has_entity_name = True
         self._attr_should_poll = False
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "switch", "mac_collection", prefix)
-        self._attr_name = make_entity_name("disable_mac_collection", prefix=prefix)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "switch", "mac_collection")
+        self._attr_name = make_entity_name("disable_mac_collection")
         self._excluded_ports = set(excluded_ports)
         self._total_ports = int(device_info.get("port_count", 1))
 
@@ -243,7 +243,7 @@ class PortMacCollectionSwitch(SwitchEntity):
     OFF = this port is included in MAC collection (enabled)
     """
 
-    def __init__(self, coordinator, device_info: dict, prefix: str, port, excluded_ports, config_entry):
+    def __init__(self, coordinator, device_info: dict, port, excluded_ports, config_entry):
         self.coordinator = coordinator
         self.raw_port_key = str(port)                 # numeric lookup
         self.padded_port_key = f"p{int(port):02d}"    # for names/unique_id
@@ -251,8 +251,8 @@ class PortMacCollectionSwitch(SwitchEntity):
         self._attr_device_info = device_info
         self._attr_has_entity_name = True
         self._attr_should_poll = False
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "switch", "mac_collection", prefix, self.padded_port_key)
-        self._attr_name = make_entity_name("disable_mac_collection", prefix=prefix, port_key=self.padded_port_key)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "switch", "mac_collection", self.padded_port_key)
+        self._attr_name = make_entity_name("disable_mac_collection", port_key=self.padded_port_key)
         self._excluded_ports = set(excluded_ports)
 
     async def async_added_to_hass(self):

@@ -132,9 +132,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     _LOGGER.info("Starting sensor setup")
     coordinator: SnmpDataUpdateCoordinator = hass.data[DOMAIN][config_entry.entry_id]
     device_info_data = config_entry.data.get(CONF_DEVICE_INFO, {})
-    prefix = config_entry.data[CONF_ENTITY_PREFIX]
-
-    # Device metadata (manufacturer, model, etc.)
+        # Device metadata (manufacturer, model, etc.)
     device_info = {
         "identifiers": {(DOMAIN, config_entry.data[CONF_DEVICE_IP])},
         "name": config_entry.data[CONF_DEVICE_NAME],
@@ -151,11 +149,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         entity_type = entry.get("type", "sensor")
         if entity_type == "sensor":
             entry["key"] = key
-            entities.append(SnmpSensor(coordinator, device_info, key, entry, prefix))
-            _LOGGER.info(f"Added device sensor: {key}")
+            entities.append(SnmpSensor(coordinator, device_info, key, entry))
+            _LOGGER.debug(f"Added device sensor: {key}")
         elif entity_type == "text_sensor":
-            entities.append(SnmpTextSensor(coordinator, device_info, key, entry, prefix))
-            _LOGGER.info(f"Added device text sensor: {key}")
+            entities.append(SnmpTextSensor(coordinator, device_info, key, entry))
+            _LOGGER.debug(f"Added device text sensor: {key}")
 
     # ----------------------------
     # Port-level OID sensors
@@ -165,11 +163,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
             entity_type = entry.get("type", "sensor")
             if entity_type == "sensor":
                 entry["key"] = key
-                entities.append(SnmpPortSensor(coordinator, device_info, key, entry, prefix, port_key))
-                _LOGGER.info(f"Added port sensor: {port_key}_{key}")
+                entities.append(SnmpPortSensor(coordinator, device_info, key, entry, port_key))
+                _LOGGER.debug(f"Added port sensor: {port_key}_{key}")
             elif entity_type == "text_sensor":
-                entities.append(SnmpPortTextSensor(coordinator, device_info, key, entry, prefix, port_key))
-                _LOGGER.info(f"Added port text sensor: {port_key}_{key}")
+                entities.append(SnmpPortTextSensor(coordinator, device_info, key, entry, port_key))
+                _LOGGER.debug(f"Added port text sensor: {port_key}_{key}")
 
     # ----------------------------
     # MAC table sensors (if OIDs exist)
@@ -185,10 +183,10 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 
     if has_mac_table and has_mac_port:
         port_count = int(device_info_data.get("port_count", 1))
-        entities.append(mac_table.DeviceMacTableSensor(coordinator, device_info, prefix))
-        entities.append(mac_table.DeviceMacTableLastUpdateSensor(coordinator, device_info, prefix))
+        entities.append(mac_table.DeviceMacTableSensor(coordinator, device_info))
+        entities.append(mac_table.DeviceMacTableLastUpdateSensor(coordinator, device_info))
         for port in range(1, port_count + 1):
-            entities.append(mac_table.PortMacTableSensor(coordinator, device_info, prefix, port))
+            entities.append(mac_table.PortMacTableSensor(coordinator, device_info, port))
         _LOGGER.info("MAC table sensors created")
 
     else:
@@ -203,7 +201,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class SnmpSensor(SensorEntity):
     """Representation of a device-level sensor."""
 
-    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, sensor_type: str, entry: dict, prefix: str):
+    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, sensor_type: str, entry: dict):
         super().__init__()
         self.coordinator = coordinator
         self.sensor_type = sensor_type
@@ -213,10 +211,10 @@ class SnmpSensor(SensorEntity):
 
         
         # Unique ID = entry_id + sensor_type
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", sensor_type, prefix)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", sensor_type)
 
         # Human-readable name
-        self._attr_name = make_entity_name(sensor_type, prefix=prefix)
+        self._attr_name = make_entity_name(sensor_type)
         self._attr_device_class = entry.get("device_class")
         self._attr_native_unit_of_measurement = entry.get("native_unit_of_measurement")
         self._entry = entry
@@ -244,7 +242,7 @@ class SnmpSensor(SensorEntity):
 class SnmpPortSensor(SensorEntity):
     """Representation of a port-level sensor."""
 
-    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, sensor_type: str, entry: dict, prefix: str, padded_port_key: str):
+    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, sensor_type: str, entry: dict, padded_port_key: str):
         super().__init__()
         self.coordinator = coordinator
         self.padded_port_key = padded_port_key
@@ -253,10 +251,10 @@ class SnmpPortSensor(SensorEntity):
         self._attr_has_entity_name = True
         self._attr_should_poll = False
         # Unique ID includes port key
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", sensor_type, prefix, padded_port_key)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "sensor", sensor_type, padded_port_key)
 
         # Human-readable name: "Port-05 In Octets"
-        self._attr_name = make_entity_name(sensor_type, prefix=prefix, port_key=padded_port_key)
+        self._attr_name = make_entity_name(sensor_type, port_key=padded_port_key)
 
         self._attr_device_class = entry.get("device_class")
         self._attr_native_unit_of_measurement = entry.get("native_unit_of_measurement")
@@ -288,15 +286,15 @@ class SnmpPortSensor(SensorEntity):
 class SnmpTextSensor(SensorEntity):
     """Representation of a device-level read-only text sensor."""
 
-    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, sensor_type: str, entry: dict, prefix: str):
+    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, sensor_type: str, entry: dict):
         super().__init__()
         self.coordinator = coordinator
         self.sensor_type = sensor_type
         self._attr_device_info = device_info
         self._attr_has_entity_name = True
         self._attr_should_poll = False
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "text_sensor", sensor_type, prefix)
-        self._attr_name = make_entity_name(sensor_type, prefix=prefix)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "text_sensor", sensor_type)
+        self._attr_name = make_entity_name(sensor_type)
         self._entry = entry
 
     async def async_added_to_hass(self):
@@ -315,7 +313,7 @@ class SnmpTextSensor(SensorEntity):
 class SnmpPortTextSensor(SensorEntity):
     """Representation of a port-level read-only text sensor."""
 
-    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, sensor_type: str, entry: dict, prefix: str, padded_port_key: str):
+    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, sensor_type: str, entry: dict, padded_port_key: str):
         super().__init__()
         self.coordinator = coordinator
         self.padded_port_key = padded_port_key
@@ -323,8 +321,8 @@ class SnmpPortTextSensor(SensorEntity):
         self._attr_device_info = device_info
         self._attr_has_entity_name = True
         self._attr_should_poll = False
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "text_sensor", sensor_type, prefix, padded_port_key)
-        self._attr_name = make_entity_name(sensor_type, prefix=prefix, port_key=padded_port_key)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "text_sensor", sensor_type, padded_port_key)
+        self._attr_name = make_entity_name(sensor_type, port_key=padded_port_key)
         self._entry = entry
 
     async def async_added_to_hass(self):

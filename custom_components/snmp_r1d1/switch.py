@@ -30,7 +30,6 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         "model": device_info_data.get("model", "Unknown"),
     }
 
-    prefix = config_entry.data[CONF_ENTITY_PREFIX]
     entities = []
 
     # ----------------------------
@@ -49,11 +48,11 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
         port_count = int(device_info_data.get("port_count", 1))
         excluded_ports = config_entry.options.get("mac_excluded_ports", [])
         entities.append(mac_table.GlobalMacCollectionSwitch(
-            coordinator, device_info, prefix, excluded_ports, config_entry
+            coordinator, device_info, excluded_ports, config_entry
         ))
         for port in range(1, port_count + 1):
             entities.append(mac_table.PortMacCollectionSwitch(
-                coordinator, device_info, prefix, port, excluded_ports, config_entry
+                coordinator, device_info, port, excluded_ports, config_entry
             ))
         _LOGGER.info("MAC table switches created (%d port switches)", port_count)
     else:
@@ -65,13 +64,13 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
     if config_entry.data.get(CONF_ENABLE_CONTROLS, False):
         for key, entry in coordinator.validated_oids.get("device", {}).items():
             if entry.get("type") == "switch":
-                entities.append(SnmpDeviceSwitch(coordinator, device_info, key, entry, prefix))
+                entities.append(SnmpDeviceSwitch(coordinator, device_info, key, entry))
                 _LOGGER.info("Added device switch: %s", key)
 
         for port_key, port_attrs in coordinator.validated_oids.get("ports", {}).items():
             for key, entry in port_attrs.items():
                 if entry.get("type") == "switch":
-                    entities.append(SnmpPortSwitch(coordinator, device_info, key, entry, prefix, port_key))
+                    entities.append(SnmpPortSwitch(coordinator, device_info, key, entry, port_key))
                     _LOGGER.info("Added port switch: %s_%s", port_key, key)
     else:
         _LOGGER.info("Controls disabled, skipping SNMP control switches")
@@ -87,7 +86,7 @@ async def async_setup_entry(hass, config_entry, async_add_entities):
 class SnmpDeviceSwitch(SwitchEntity):
     """Representation of a device-level switch entity."""
 
-    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, switch_type: str, entry: dict, prefix: str):
+    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, switch_type: str, entry: dict):
         super().__init__()
         self.coordinator = coordinator
         self.switch_type = switch_type
@@ -95,9 +94,9 @@ class SnmpDeviceSwitch(SwitchEntity):
         self._attr_has_entity_name = True
         self._attr_should_poll = False
         # Unique ID for HA registry
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "switch", switch_type, prefix)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "switch", switch_type)
         # Human-readable name
-        self._attr_name = make_entity_name(switch_type, prefix=prefix)
+        self._attr_name = make_entity_name(switch_type)
         self._entry = entry
 
     async def async_added_to_hass(self):
@@ -141,7 +140,7 @@ class SnmpDeviceSwitch(SwitchEntity):
 class SnmpPortSwitch(SwitchEntity):
     """Representation of a port-level switch entity."""
 
-    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, switch_type: str, entry: dict, prefix: str, padded_port_key: str):
+    def __init__(self, coordinator: SnmpDataUpdateCoordinator, device_info: dict, switch_type: str, entry: dict, padded_port_key: str):
         super().__init__()
         self.coordinator = coordinator
         self.padded_port_key = padded_port_key  # e.g., "p01"
@@ -150,9 +149,9 @@ class SnmpPortSwitch(SwitchEntity):
         self._attr_has_entity_name = True
         self._attr_should_poll = False
         # Unique ID includes port
-        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "switch", switch_type, prefix, padded_port_key)
+        self._attr_unique_id = make_entity_id(coordinator.config_entry.entry_id, "switch", switch_type, padded_port_key)
         # Human-readable name: Port-05 Admin State
-        self._attr_name = make_entity_name(switch_type, prefix=prefix, port_key=padded_port_key)
+        self._attr_name = make_entity_name(switch_type, port_key=padded_port_key)
         self._entry = entry
 
     async def async_added_to_hass(self):

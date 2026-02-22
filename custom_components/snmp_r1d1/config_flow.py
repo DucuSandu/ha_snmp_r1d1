@@ -67,7 +67,7 @@ async def validate_mac_oid(client, oid: str, key: str, section: str, logger=_LOG
 
         # Normalize both sides: strip leading dot
         if first_oid.lstrip(".").startswith(oid.lstrip(".")):
-            logger.info(
+            logger.debug(
                 "Validated MAC OID %s for %s in %s via GETNEXT (first_oid=%s, value=%s)",
                 oid, key, section, first_oid, value
             )
@@ -223,6 +223,36 @@ def validate_vmap(vmap, entity_type):
     # ------------------------------
     else:
         raise ValueError(f"Unsupported entity type {entity_type} for vmap")
+
+
+def _log_oids_pretty(level: str, label: str, oids: dict, logger=_LOGGER) -> None:
+    """Log OID structure in a human-readable multi-line format.
+
+    Args:
+        level: Log level ("debug", "info", "warning", "error")
+        label: Header label for the log block
+        oids: OID dict to format (configured_oids or validated_oids)
+        logger: Logger instance
+    """
+    lines = [f"{label}:"]
+    for section, entries in oids.items():
+        lines.append(f"  {section}:")
+        if isinstance(entries, dict):
+            for key, entry in entries.items():
+                if isinstance(entry, dict):
+                    if any(isinstance(v, dict) for v in entry.values()):
+                        lines.append(f"    {key}:")
+                        for attr, val in entry.items():
+                            lines.append(f"      {attr}: {val}")
+                    else:
+                        oid = entry.get("oid", "na")
+                        etype = entry.get("type", "?")
+                        lines.append(f"    {key}: [{etype}] {oid}")
+                else:
+                    lines.append(f"    {key}: {entry}")
+    log_fn = getattr(logger, level, logger.debug)
+    log_fn("\n".join(lines))
+
 
 class SnmpFlowHelper:
     """Helper class for shared flow step logic."""
@@ -471,7 +501,6 @@ class SnmpFlowHelper:
         flow._device_info.setdefault("excluded_ports", vendor_oids.get("config", {}).get("port_exclude", []))
 
         _LOGGER.info("        Step discover device info: %s", flow._device_info)
-        #_LOGGER.debug("        Step discover validated OIDs: attributes=%s, device=%s", flow._validated_oids["attributes"], flow._validated_oids["device"])
         _LOGGER.info("        Step discover proceeding to parse_config")
         return await flow.async_step_parse_config()
 
@@ -638,11 +667,11 @@ class SnmpFlowHelper:
 
                     flow._configured_oids["device"][f"custom_{name}"] = _configured_custom_entry
                     _LOGGER.debug("        Added custom OID: %s = %s, type=sensor, calc=direct", name, oid)
-            
-            ###_LOGGER.warning("First port after parsing (Configured Oids): %s -> %s", *(lambda p=flow._configured_oids.get("ports", {}): (next(iter(p), "None"), p.get(next(iter(p), "None"), "None")))())
-            _LOGGER.debug("        flow.configured after parsing: %s", flow._configured_oids)
 
-            
+            ###_LOGGER.warning("First port after parsing (Configured Oids): %s -> %s", *(lambda p=flow._configured_oids.get("ports", {}): (next(iter(p), "None"), p.get(next(iter(p), "None"), "None")))())
+            _log_oids_pretty("debug", "Configured OIDs", flow._configured_oids)
+
+
             _LOGGER.info("        Step parse_config completed, proceeding to validate")
             return await flow.async_step_validate()
         except Exception as e:
@@ -691,7 +720,7 @@ class SnmpFlowHelper:
                 if entry.get("type") in ("mac_table", "mac_port"):
                     if await validate_mac_oid(client, oid, key, section, _LOGGER):
                         flow._validated_oids[section][key] = entry
-                        _LOGGER.info(        "Validated Mac Table OID for %s in %s: %s",        key, section, entry    )    
+                        _LOGGER.info(        "Validated Mac Table OID for %s in %s: %s",        key, section, entry    )
                     continue
 
                 try:
@@ -726,7 +755,7 @@ class SnmpFlowHelper:
 
                         # If we reach here, OID is valid → keep it
                         flow._validated_oids[section][key] = entry
-                        _LOGGER.info("        Validated OID for %s in %s: %s (value=%s)", key, section, entry, value)
+                        _LOGGER.debug("        Validated OID for %s in %s: %s (value=%s)", key, section, entry, value)
                     else:
                         _LOGGER.warning("        Invalid OID %s for %s in %s (value=%s)",oid, key, section, value)
                 except Exception as e:
@@ -763,7 +792,7 @@ class SnmpFlowHelper:
                                         continue
                         # If valid → add to validated_oids
                         flow._validated_oids["ports"][port_key][key] = entry
-                        _LOGGER.info("        Validated OID for %s in %s: %s (value=%s)",
+                        _LOGGER.debug("        Validated OID for %s in %s: %s (value=%s)",
                                     key, port_key, entry, value)
                     else:
                         _LOGGER.warning("        Invalid OID %s for %s in %s (value=%s)",
@@ -790,7 +819,17 @@ class SnmpFlowHelper:
             _LOGGER.error("        No valid OIDs found, cannot proceed")
             errors["base"] = "no_valid_oids"
             return await flow.async_step_settings()
-        _LOGGER.debug("        flow.validated after validation: %s", flow._validated_oids)
+        _log_oids_pretty("info", "Validated OIDs", flow._validated_oids)
+        # Warn about OIDs that were configured but did not pass validation
+        for section in ["device", "attributes"]:
+            for key in flow._configured_oids.get(section, {}):
+                if key not in flow._validated_oids.get(section, {}):
+                    _LOGGER.warning("OID configured but not validated: [%s] %s", section, key)
+        for port_key, port_attrs in flow._configured_oids.get("ports", {}).items():
+            for key in port_attrs:
+                if key not in flow._validated_oids.get("ports", {}).get(port_key, {}):
+                    _LOGGER.warning("OID configured but not validated: [%s] %s -> %s", port_key, port_key, key)
+
         return await flow.async_step_present()
 
     @staticmethod
@@ -878,7 +917,7 @@ class SnmpFlowHelper:
             f"PoE Port Entities: {poe_port_count} ports - "
             f"{', '.join(sorted(poe_port_entities)) if poe_port_entities else 'None'}"
         )
-        
+
         has_mac = any(e.get("type") in ("mac_table", "mac_port") for e in flow._validated_oids.get("device", {}).values())
         mac_text = f"MAC Table + {flow._device_info.get('port_count', 0)} port switches" if has_mac else "None"
 
@@ -921,7 +960,7 @@ class SnmpFlowHelper:
             data_schema=vol.Schema(schema_dict),
             errors=errors
         )
-        
+
 
 
     @staticmethod
@@ -1014,12 +1053,6 @@ class SnmpFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 ipaddress.ip_address(user_input[CONF_DEVICE_IP])
-                # Auto-generate prefix from device name if left empty
-                if not user_input[CONF_ENTITY_PREFIX]:
-                    raw = user_input[CONF_DEVICE_NAME].lower().strip()
-                    user_input[CONF_ENTITY_PREFIX] = re.sub(r'[^a-z0-9]+', '_', raw).strip('_')
-                if not re.match(r"^[a-z0-9_]+$", user_input[CONF_ENTITY_PREFIX]):
-                    raise ValueError("Invalid entity prefix")
                 self._data.update(user_input)
                 _LOGGER.debug("User step data: %s", self._data)
                 _LOGGER.info("Basic device info validated, proceeding to settings step")
@@ -1034,12 +1067,11 @@ class SnmpFlowHandler(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_DEVICE_IP, default=self._data.get(CONF_DEVICE_IP, "")): str,
                 vol.Required(CONF_DEVICE_NAME, default=self._data.get(CONF_DEVICE_NAME, "")): str,
                 vol.Required(CONF_DEVICE_TYPE, default=self._data.get(CONF_DEVICE_TYPE, "zyxel")): vol.In(list(DEVICE_TYPE_OIDS.keys())),
-                vol.Optional(CONF_ENTITY_PREFIX, default=self._data.get(CONF_ENTITY_PREFIX, "")): str,
-                                
+
             }),
             errors=errors,
         )
-    
+
     async def async_step_settings(self, user_input=None):
         """Handled by SnmpFlowHelper."""
         _LOGGER.info("Entered async_step_settings")

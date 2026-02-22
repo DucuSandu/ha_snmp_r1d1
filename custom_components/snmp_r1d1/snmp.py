@@ -183,7 +183,7 @@ class SnmpClient:
             result[oid_str] = value
             last_oid = oid_str
 
-            _LOGGER.info("%s decoded oid=%s value=%s (val_type=%s)",
+            _LOGGER.debug("%s decoded oid=%s value=%s (val_type=%s)",
                         source, oid_str, value, type(val_obj))
 
         return last_oid
